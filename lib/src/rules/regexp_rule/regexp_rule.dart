@@ -1,3 +1,4 @@
+
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -8,6 +9,9 @@ import 'package:cool_linter/src/rules/rule.dart';
 import 'package:cool_linter/src/rules/rule_message.dart';
 import 'package:cool_linter/src/utils/analyse_utils.dart';
 import 'package:pub_semver/pub_semver.dart';
+
+import '../../plugin.dart';
+import '../rule_message.dart';
 
 class RegExpRule extends Rule {
   @override
@@ -26,7 +30,6 @@ class RegExpRule extends Rule {
     if (path == null) {
       return <RuleMessage>[];
     }
-
     return _getIncorrectLines(
       parseResult: parseResult,
       // path: path,
@@ -71,6 +74,11 @@ class RegExpRule extends Rule {
 
       // iterate
       for (final ExcludeWord excludeWord in excludeWordList) {
+        //如果是白名单工程，则直接忽略。
+        final List<String> projects = excludeWord.ignoreProjects.split(',');
+        final bool isIgnoreProject =
+            projects.any((String e) => e.isNotEmpty && CoolLinterPlugin.yaml?['name'] == e);
+        if (isIgnoreProject) continue;
         int offset;
         int start = 0;
 
@@ -79,8 +87,13 @@ class RegExpRule extends Rule {
             break;
           }
 
-          offset = content.indexOf(excludeWord.patternRegExp!, start);
+          final Iterable<RegExpMatch> matches =
+              excludeWord.patternRegExp!.allMatches(content, start);
+          if (matches.isEmpty) break;
+          offset = matches.first.start;
+          // offset = content.indexOf(excludeWord.patternRegExp!, start);
           start = offset + 1;
+          final int end = matches.first.end;
 
           if (offset != -1) {
             // ignore: always_specify_types
@@ -93,13 +106,13 @@ class RegExpRule extends Rule {
             if (!willIgnore) {
               final RuleMessage ruleMessage = RuleMessage(
                 severityName: excludeWord.severity,
-                message: 'regexp_exclude: ${excludeWord.hint}',
+                message: '${excludeWord.title}: ${excludeWord.hint}',
                 code: 'regexp_exclude',
                 changeMessage: 'cool_linter. need to replace by pattern:',
                 location: Location(
                   path,
                   offset, // offset
-                  1, // length
+                  end - start, // length
                   offsetLocation.lineNumber, // startLine
                   offsetLocation.columnNumber + 1, // startColumn
                   offsetLocation.lineNumber, // endLine

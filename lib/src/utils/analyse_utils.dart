@@ -1,11 +1,13 @@
 import 'dart:convert';
-
+import 'dart:io' as io;
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/file_system/file_system.dart';
 import 'package:cool_linter/src/config/analysis_settings.dart';
 import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
+
+import '../plugin.dart';
 
 /// folder's name in format without slashes
 /// used in [plugin.dart]
@@ -56,10 +58,27 @@ abstract class AnalysisSettingsUtil {
     if (file == null) {
       return null;
     }
-
-    final String yaml = file.readAsStringSync();
-
-    return AnalysisSettings.fromJson(convertYamlToMap(yaml));
+    String yaml = file.readAsStringSync();
+    Map<String, dynamic> map = convertYamlToMap(yaml);
+    //add by wey.yan , 如果有include，则读include里面的配置,用于支持import配置。
+    if (map['include'] != null) {
+      final String includePath = map['include'] as String;
+      final String subPath = includePath.substring('package:'.length);
+      final List<String> list = subPath.split('/');
+      final String packageName = list[0].trim();
+      final String fileName = list[1].trim();
+      final io.File packageConfigFile =
+          io.File('${CoolLinterPlugin.sRootPath}/.dart_tool/package_config.json');
+      final String jsonStr = packageConfigFile.readAsStringSync();
+      final List packages = convertYamlToMap(jsonStr)['packages'] as List;
+      final Map targetLib =
+          packages.firstWhere((dynamic e) => (e as Map)['name'] == packageName) as Map;
+      final String absPath = '${targetLib['rootUri']}/${targetLib['packageUri']}$fileName';
+      final io.File yamlFile = io.File.fromUri(Uri.parse(absPath));
+      yaml = yamlFile.readAsStringSync();
+      map = convertYamlToMap(yaml);
+    }
+    return AnalysisSettings.fromJson(map);
   }
 
   static List<Glob> excludesGlobList(String root, AnalysisSettings analysisSettings) {

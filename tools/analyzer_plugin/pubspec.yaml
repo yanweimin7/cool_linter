@@ -6,4 +6,8 @@ environment:
   sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
-  cool_linter: ^2.3.5
+  cool_linter:
+    hosted:
+      name: cool_linter
+      url: https://unpub.bybit.com
+    version: ^2.3.5

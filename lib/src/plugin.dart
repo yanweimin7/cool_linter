@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' as io;
 
 // ignore_for_file: implementation_imports
 import 'package:analyzer/dart/analysis/analysis_context.dart';
+
 //
 import 'package:analyzer/dart/analysis/context_builder.dart';
 import 'package:analyzer/dart/analysis/context_locator.dart';
@@ -42,6 +44,8 @@ class CoolLinterPlugin extends ServerPlugin {
   List<String> _filesFromSetPriorityFilesRequest = <String>[];
   AnalysisSettings? _analysisSettings;
   List<Glob> _excludesGlobList = <Glob>[];
+  static Map<String, dynamic>? yaml;
+  static String? sRootPath ;
 
   @override
   AnalysisDriverGeneric createAnalysisDriver(plugin.ContextRoot contextRoot) {
@@ -53,7 +57,14 @@ class CoolLinterPlugin extends ServerPlugin {
     }).toList();
 
     final String rootPath = contextRoot.root;
-    final List<ContextRoot> locator = ContextLocator(resourceProvider: resourceProvider).locateRoots(
+
+    final io.File file = io.File('$rootPath/pubspec.yaml');
+    final String content = file.readAsStringSync();
+    yaml = AnalysisSettingsUtil.convertYamlToMap(content);
+    sRootPath = rootPath;
+
+    final List<ContextRoot> locator =
+        ContextLocator(resourceProvider: resourceProvider).locateRoots(
       includedPaths: <String>[rootPath],
       excludedPaths: <String>[
         ...contextRoot.exclude,

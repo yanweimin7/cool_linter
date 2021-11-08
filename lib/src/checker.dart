@@ -1,15 +1,16 @@
+
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart';
-import 'package:cool_linter/src/config/analysis_settings.dart';
-import 'package:cool_linter/src/rules/rule.dart';
-import 'package:cool_linter/src/rules/rule_message.dart';
-import 'package:cool_linter/src/utils/analyse_utils.dart';
 import 'package:glob/glob.dart';
 
+import 'config/analysis_settings.dart';
 import 'rules/always_specify_types_rule/always_specify_types_rule.dart';
 import 'rules/regexp_rule/regexp_rule.dart';
+import 'rules/rule.dart';
+import 'rules/rule_message.dart';
 import 'rules/stream_subscription_rule/stream_subscription_rule.dart';
+import 'utils/analyse_utils.dart';
 
 // TODO: add if exists in analysis options
 // final List<Rule> kRulesList = <Rule>[
@@ -57,16 +58,21 @@ class Checker {
     }
 
     return errorMessageList.map((RuleMessage errorMessage) {
-      final AnalysisError error = AnalysisError(
-        AnalysisErrorSeverity.INFO, //( errorMessage.severityName),
-        AnalysisErrorType.LINT,
-        errorMessage.location,
-        errorMessage.message,
-        errorMessage.code,
-        hasFix: true,
-        correction:
-            'go correct path = ${parseResult.path} stamp = ${parseResult.unit?.declaredElement?.source.modificationStamp} offset = ${errorMessage.location.offset} len = ${errorMessage.location.length}',
-      );
+      AnalysisErrorSeverity serverity = AnalysisErrorSeverity.INFO;
+      switch (errorMessage.severityName) {
+        case 'ERROR':
+          serverity = AnalysisErrorSeverity.ERROR;
+          break;
+        case 'INFO':
+          serverity = AnalysisErrorSeverity.INFO;
+          break;
+        case 'WARNING':
+          serverity = AnalysisErrorSeverity.WARNING;
+          break;
+      }
+      final AnalysisError error = AnalysisError(serverity, AnalysisErrorType.LINT,
+          errorMessage.location, errorMessage.message, errorMessage.code,
+          hasFix: true, correction: '');
 
       final PrioritizedSourceChange fix = PrioritizedSourceChange(
         1,
